@@ -1,7 +1,7 @@
 {{#let
   (component (ensure-safe-component (bs-default @titleComponent (component "bs-accordion/item/title"))) collapsed=this.collapsed disabled=@disabled onClick=(fn (bs-default @onClick (bs-noop)) this.value))
   (component (ensure-safe-component (bs-default @bodyComponent (component "bs-accordion/item/body"))) collapsed=this.collapsed)
-as |Title Body|
+as |title Body|
 }}
   <div
     class="{{if @disabled "disabled"}} {{this.typeClass}} {{if (macroCondition (macroGetOwnConfig "isBS4")) "card"}} {{if (macroCondition (macroGetOwnConfig "isBS5")) "accordion-item"}}"
@@ -10,13 +10,13 @@ as |Title Body|
     {{#if (has-block-params)}}
       {{yield
         (hash
-          title=Title
-          body=Body        )
+          title=title
+          body=Body)
       }}
     {{else}}
-      <Title>
-        {{@title}}
-      </Title>
+		{{#title}}
+			{{@title}}
+		{{/title}}
       <Body>
       {{yield}}
       </Body>
