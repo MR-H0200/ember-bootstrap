@@ -13,7 +13,6 @@
       @autoPlacement={{this.autoPlacement}}
       @viewportElement={{this.viewportElement}}
       @viewportPadding={{this.viewportPadding}}
-      @class={{@class}}
 
       {{create-ref "overlayElement"}}
       ...attributes
@@ -27,3 +26,4 @@
   {{/let}}
 {{/if}}
 {{did-insert this.setup}}
+{{did-update this.showOrHide @visible}}

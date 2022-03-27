@@ -1,11 +1,10 @@
+import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action, get } from '@ember/object';
-import { assert, warn } from '@ember/debug';
-import { DEBUG } from '@glimmer/env';
+import { assert } from '@ember/debug';
 import { isBlank, isPresent, typeOf } from '@ember/utils';
 import { A, isArray } from '@ember/array';
 import { getOwner } from '@ember/application';
-import FormGroup from 'ember-bootstrap/components/bs-form/group';
 import { guidFor } from '@ember/object/internals';
 import { ref } from 'ember-ref-bucket';
 import ControlInput from './element/control/input';
@@ -75,7 +74,7 @@ import { dedupeTracked } from 'tracked-toolbox';
 
   ```hbs
   <BsForm @model={{this}} @onSubmit={{action "submit"}} as |form|>
-    <form.element @label="Select-2" @property="gender" @useIcons={{false}} as |el|>
+    <form.element @label="Select-2" @property="gender" as |el|>
       <PikadayInput @value={{el.value}} @onSelection={{action el.setValue}} id={{el.id}} />
     </form.element>
   </BsForm>
@@ -87,9 +86,6 @@ import { dedupeTracked } from 'tracked-toolbox';
   * `value`: the value of the form element
   * `setValue`: function to change the value of the form element
   * `validation`: the validation state of the element, `null` if no validation is to be shown, otherwise 'success', 'error' or 'warning'
-
-  If your custom control does not render an input element, you should set `useIcons` to `false` since bootstrap only supports
-  feedback icons with textual `<input class="form-control">` elements.
 
   If you just want to customize the existing control component, you can use the aforementioned yielded `control` component
   to customize that existing component:
@@ -200,7 +196,7 @@ import { dedupeTracked } from 'tracked-toolbox';
   @extends Components.FormGroup
   @public
 */
-export default class FormElement extends FormGroup {
+export default class FormElement extends Component {
   /**
    * @property _element
    * @type null | HTMLElement
@@ -630,36 +626,31 @@ export default class FormElement extends FormGroup {
    * @private
    */
   get validation() {
-    if (!this.showValidation || !this.hasValidator || this.isValidating || this.args._disabled) {
-      return null;
-    } else if (this.showModelValidation) {
-      /* The display of model validation messages has been triggered */
-      return this.hasErrors || this.hasCustomError
-        ? 'error'
-        : this.hasWarnings || this.hasCustomWarning
-        ? 'warning'
-        : 'success';
-    } else {
-      /* If there are custom errors or warnings these should always be shown */
-      return this.hasCustomError ? 'error' : 'warning';
-    }
-  }
+    const shouldShowValidationState =
+      this.showModelValidation && this.hasValidator && !this.isValidating && !this.args._disabled;
 
-  /**
-   * True for text field `controlType`s
-   *
-   * @property useIcons
-   * @type boolean
-   * @public
-   */
-  get useIcons() {
-    let { controlType } = this;
-    return (
-      !this.customControlComponent &&
-      controlType !== 'textarea' &&
-      controlType !== 'checkbox' &&
-      controlType !== 'radio'
-    );
+    if (
+      /* custom errors should be always shown */
+      this.hasCustomError ||
+      /* validation error should be shown in preference to warnings */
+      (shouldShowValidationState && this.hasErrors)
+    ) {
+      return 'error';
+    }
+
+    if (
+      /* custom warning should be always shown unless there is a validation error */
+      this.hasCustomWarning ||
+      (shouldShowValidationState && this.hasWarnings)
+    ) {
+      return 'warning';
+    }
+
+    if (shouldShowValidationState) {
+      return 'success';
+    }
+
+    return null;
   }
 
   /**
@@ -795,68 +786,6 @@ export default class FormElement extends FormGroup {
 
     if (!isBlank(this.args.property)) {
       this.setupValidations?.();
-    }
-
-    // deprecate arguments used for attribute bindings only
-    if (DEBUG) {
-      [
-        ['accept', 'image/png'],
-        ['autocapitalize', 'words'],
-        ['autocomplete', 'on'],
-        ['autocorrect', 'off'],
-        ['autofocus', false],
-        ['autosave', 'someuniquevalue'],
-        ['cols', '10'],
-        ['controlSize:size', '10'],
-        ['disabled', true],
-        ['form', 'myform'],
-        ['inputmode', 'tel'],
-        ['max', '5'],
-        ['maxlength', '5'],
-        ['min', '5'],
-        ['minlength', '5'],
-        ['multiple', true],
-        ['name', 'foo'],
-        ['pattern', '^[0-9]{5}$'],
-        ['placeholder', 'foo'],
-        ['required', true],
-        ['readonly', true],
-        ['rows', '10'],
-        ['spellcheck', true],
-        ['step', '2'],
-        ['tabindex', '-1'],
-        ['title', 'foo'],
-        ['wrap', 'hard'],
-      ].forEach(([mapping, value]) => {
-        let argument = mapping.split(':')[0];
-        let attribute = mapping.includes(':') ? mapping.split(':')[1] : argument;
-        let warningMessage =
-          `Argument ${argument} of <element> component yielded by <BsForm> has been removed. ` +
-          `Its only purpose was setting the HTML attribute ${attribute} of the control element. ` +
-          `You should use angle bracket  component invocation syntax instead:\n` +
-          `Before:\n` +
-          `  {{#bs-form as |form|}}\n` +
-          `    {{form.element ${attribute}=${typeof value === 'string' ? `"${value}"` : value}}}\n` +
-          `  {{/bs-form}}\n` +
-          `  <BsForm as |form|>\n` +
-          `    <form.element as |el|>\n` +
-          `      <el.control @${attribute}=${typeof value === 'string' ? `"${value}"` : `{{${value}}}`} />\n` +
-          `    </form.element>\n` +
-          `  </BsForm>\n` +
-          `After:\n` +
-          `  <BsForm as |form|>\n` +
-          `    <form.element as |el|>\n` +
-          `      <el.control ${
-            typeof value === 'boolean' ? (value ? attribute : '') : `${attribute}="${value}"`
-          } />\n` +
-          `    </form.element>\n` +
-          `  </BsForm>\n` +
-          `A codemod is available to help with the required migration. See https://github.com/kaliber5/ember-bootstrap-codemods/blob/master/transforms/deprecated-attribute-arguments/README.md`;
-
-        warn(warningMessage, !Object.keys(this.args).includes(argument), {
-          id: `ember-bootstrap.removed-argument.form-element#${argument}`,
-        });
-      });
     }
   }
 

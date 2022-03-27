@@ -2,7 +2,9 @@ import { module, skip } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
 import { click, focus, render, settled, triggerKeyEvent, waitUntil } from '@ember/test-helpers';
 import {
+  delay,
   defaultButtonClass,
+  closeButtonClass,
   test,
   testRequiringFocus,
   testRequiringTransitions,
@@ -104,6 +106,26 @@ module('Integration | Component | bs-modal-simple', function (hooks) {
     assert.dom('.modal').doesNotExist('Modal is hidden');
   });
 
+  // https://github.com/kaliber5/ember-bootstrap/issues/1612
+  test('open property accepts loosely types values', async function (assert) {
+    this.set('open', null);
+    await render(
+      hbs`<BsModalSimple @title="Simple Dialog" @fade={{false}} @open={{this.open}}>Hello world!</BsModalSimple>`
+    );
+
+    assert.dom('.modal').doesNotExist('Modal is hidden');
+
+    this.set('open', '');
+    await settled();
+    assert.dom('.modal').doesNotExist('Modal is hidden');
+
+    this.set('open', {});
+    await settled();
+
+    assert.dom('.modal').hasClass(visibilityClass(), 'Modal is visible');
+    assert.dom('.modal').isVisible();
+  });
+
   testRequiringTransitions('open property shows modal [fade]', async function (assert) {
     this.set('open', false);
     await render(hbs`<BsModalSimple @title="Simple Dialog" @open={{this.open}}>Hello world!</BsModalSimple>`);
@@ -126,9 +148,9 @@ module('Integration | Component | bs-modal-simple', function (hooks) {
       hbs`<BsModalSimple @title="Simple Dialog" @closeButton={{this.closeButton}}>Hello world!</BsModalSimple>`
     );
 
-    assert.dom('.modal .modal-header .close').doesNotExist('Modal has no close button');
+    assert.dom(`.modal .modal-header .${closeButtonClass()}`).doesNotExist('Modal has no close button');
     this.set('closeButton', true);
-    assert.dom('.modal .modal-header .close').exists({ count: 1 }, 'Modal has close button');
+    assert.dom(`.modal .modal-header .${closeButtonClass()}`).exists({ count: 1 }, 'Modal has close button');
   });
 
   test('fade property toggles fade effect', async function (assert) {
@@ -157,7 +179,7 @@ module('Integration | Component | bs-modal-simple', function (hooks) {
 
     assert.dom('.modal').exists({ count: 1 }, 'Modal is visible');
     assert.dom('.modal').hasClass(visibilityClass(), 'Modal is visible');
-    await click('.modal .modal-header .close');
+    await click(`.modal .modal-header .${closeButtonClass()}`);
 
     assert.dom('.modal').doesNotExist('Modal is hidden');
   });
@@ -182,7 +204,7 @@ module('Integration | Component | bs-modal-simple', function (hooks) {
     // wait for fade animation
     assert.dom('.modal').exists({ count: 1 }, 'Modal is visible');
     assert.dom('.modal').hasClass(visibilityClass(), 'Modal is visible');
-    await click('.modal .modal-header .close');
+    await click(`.modal .modal-header .${closeButtonClass()}`);
 
     assert.dom('.modal').hasClass(visibilityClass(), 'Modal is still visible');
   });
@@ -249,7 +271,7 @@ module('Integration | Component | bs-modal-simple', function (hooks) {
     await render(
       hbs`<BsModalSimple @title="Simple Dialog" @fade={{false}} @onHide={{action "testAction"}}>Hello world!</BsModalSimple>`
     );
-    await click('.modal .modal-header .close');
+    await click(`.modal .modal-header .${closeButtonClass()}`);
     assert.ok(hideSpy.calledOnce);
   });
 
@@ -384,6 +406,7 @@ module('Integration | Component | bs-modal-simple', function (hooks) {
 
     this.set('open', false);
     await settled();
+    await delay(0);
 
     assert.dom('[data-test-button]').isFocused();
   });
@@ -525,7 +548,7 @@ module('Integration | Component | bs-modal-simple', function (hooks) {
 
     this.set('renderComponent', false);
 
-    assert.ok(!document.body.classList.contains('modal-open'), 'body element does not have "modal-open" class.');
+    assert.notOk(document.body.classList.contains('modal-open'), 'body element does not have "modal-open" class.');
   });
 
   test('Resets scroll bar when component is removed from view', async function (assert) {
@@ -577,8 +600,8 @@ module('Integration | Component | bs-modal-simple', function (hooks) {
     await render(
       hbs`<BsModalSimple @title="Simple Dialog" @fade={{false}} @open={{this.open}}>Hello world!</BsModalSimple>`
     );
-    await click('.modal .modal-header .close');
-    assert.equal(this.open, true, 'DOes not change open property');
+    await click(`.modal .modal-header .${closeButtonClass()}`);
+    assert.true(this.open, 'DOes not change open property');
   });
 
   test('modal can be centered vertically', async function (assert) {
@@ -588,10 +611,11 @@ module('Integration | Component | bs-modal-simple', function (hooks) {
     assert.dom('.modal-dialog').hasClass('modal-dialog-centered');
   });
 
-  test('Modal has accesibility attributes with default title', async function (assert) {
+  test('Modal has accessibility attributes with default title', async function (assert) {
     await render(hbs`<BsModalSimple @open={{true}} @title="Simple Dialog">Hello world!</BsModalSimple>`);
 
     const modalTitleId = document.getElementsByClassName('modal-title')[0].id;
+    assert.notOk(modalTitleId.includes('undefined'), 'Should have a proper ID');
     assert.dom('.modal').exists({ count: 1 }, 'Modal exists.');
     assert.dom('.modal').hasAttribute('role', 'dialog');
     assert.dom('.modal-dialog').hasAttribute('role', 'document');

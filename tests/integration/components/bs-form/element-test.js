@@ -13,7 +13,6 @@ import {
   test,
   testBS4,
   testBS5,
-  testForBootstrap,
   testRequiringFocus,
   validationErrorClass,
   validationSuccessClass,
@@ -31,7 +30,7 @@ module('Integration | Component | bs-form/element', function (hooks) {
   setupRenderingTest(hooks);
   setupNoDeprecations(hooks);
 
-  testForBootstrap([3, 4], 'component has form-group bootstrap class', async function (assert) {
+  testBS4('component has form-group bootstrap class', async function (assert) {
     await render(hbs`<BsForm::Element data-test-form-element />`);
     assert.dom('[data-test-form-element]').hasClass('form-group', 'component has form-group class');
   });
@@ -39,6 +38,61 @@ module('Integration | Component | bs-form/element', function (hooks) {
   testBS5('component has no form-group bootstrap class', async function (assert) {
     await render(hbs`<BsForm::Element data-test-form-element />`);
     assert.dom('[data-test-form-element]').doesNotHaveClass('form-group', 'component has no form-group class');
+  });
+
+  test('supports vertical form layout', async function (assert) {
+    await render(hbs`
+      <BsForm @formLayout="vertical" as |form|>
+        <form.element @label="some label" data-test-form-element />
+      </BsForm>
+    `);
+
+    if (isBootstrap(4)) {
+      assert.dom('[data-test-form-element]').hasClass('form-group', 'component has form-group class');
+    } else {
+      assert.dom('[data-test-form-element]').hasClass('mb-3');
+    }
+    assert.equal(
+      this.element.querySelector('[data-test-form-element] > :nth-child(1)').tagName,
+      'LABEL',
+      'first child is a label'
+    );
+    assert.equal(
+      this.element.querySelector('[data-test-form-element] > :nth-child(2)').tagName,
+      'INPUT',
+      'second child is a input'
+    );
+  });
+
+  test('supports horizontal form layout', async function (assert) {
+    await render(hbs`
+      <BsForm @formLayout="horizontal" as |form|>
+        <form.element @label="some label" data-test-form-element />
+      </BsForm>
+    `);
+
+    if (isBootstrap(4)) {
+      assert.dom('[data-test-form-element]').hasClass('form-group', 'component has form-group class');
+    } else {
+      assert.dom('[data-test-form-element]').hasClass('row').hasClass('mb-3');
+    }
+    assert.equal(
+      this.element.querySelector('[data-test-form-element] > :nth-child(1)').tagName,
+      'LABEL',
+      'first child is a label'
+    );
+    assert.dom('[data-test-form-element] > :nth-child(1)').hasClass('col-md-4', 'label has grid class');
+    assert.equal(
+      this.element.querySelector('[data-test-form-element] > :nth-child(2)').tagName,
+      'DIV',
+      'second child is a div'
+    );
+    assert.dom('[data-test-form-element] > :nth-child(2)').hasClass('col-md-8', 'div has grid class');
+    assert.equal(
+      this.element.querySelector('[data-test-form-element] > :nth-child(2) > :first-child').tagName,
+      'INPUT',
+      'divs first child is an input'
+    );
   });
 
   test('setting label property displays label tag', async function (assert) {
@@ -451,48 +505,6 @@ module('Integration | Component | bs-form/element', function (hooks) {
     assert.dom('input').hasValue('baz', 'input updates value from model');
   });
 
-  test('Changing formLayout changes markup', async function (assert) {
-    this.set('formLayout', 'vertical');
-    await render(
-      hbs`<BsForm @horizontalLabelGridClass="col-sm-4" @formLayout={{this.formLayout}} as |form|><form.element @controlType="text" @label="myLabel" data-test-form-element /></BsForm>`
-    );
-    if (!isBootstrap(5)) {
-      assert.dom('[data-test-form-element]').hasClass('form-group', 'component has form-group class');
-    }
-    assert.equal(
-      this.element.querySelector('[data-test-form-element] > :nth-child(1)').tagName,
-      'LABEL',
-      'first child is a label'
-    );
-    assert.equal(
-      this.element.querySelector('[data-test-form-element] > :nth-child(2)').tagName,
-      'INPUT',
-      'second child is a input'
-    );
-
-    this.set('formLayout', 'horizontal');
-    if (!isBootstrap(5)) {
-      assert.dom('[data-test-form-element]').hasClass('form-group', 'component has form-group class');
-    }
-    assert.equal(
-      this.element.querySelector('[data-test-form-element] > :nth-child(1)').tagName,
-      'LABEL',
-      'first child is a label'
-    );
-    assert.dom('[data-test-form-element] > :nth-child(1)').hasClass('col-sm-4', 'label has grid class');
-    assert.equal(
-      this.element.querySelector('[data-test-form-element] > :nth-child(2)').tagName,
-      'DIV',
-      'second child is a div'
-    );
-    assert.dom('[data-test-form-element] > :nth-child(2)').hasClass('col-sm-8', 'div has grid class');
-    assert.equal(
-      this.element.querySelector('[data-test-form-element] > :nth-child(2) > :first-child').tagName,
-      'INPUT',
-      'divs first child is an input'
-    );
-  });
-
   test('Custom controls are supported', async function (assert) {
     let model = new (class {
       @tracked gender = 'male';
@@ -536,16 +548,6 @@ module('Integration | Component | bs-form/element', function (hooks) {
     assert.equal(model.gender, 'diverse', 'yielded control component updates property of model');
     assert.dom('input').hasValue('diverse', 'yielded value is updated if changed through control component');
     assert.dom('textarea').hasValue('diverse', 'value of yielded control component is updated');
-  });
-
-  test('required property propagates', async function (assert) {
-    await render(hbs`<BsForm::Element @label="myLabel" @required={{true}} data-test-form-element />`);
-    assert.dom('[data-test-form-element]').hasClass('is-required', 'component has is-required class');
-  });
-
-  test('disabled property propagates', async function (assert) {
-    await render(hbs`<BsForm::Element @label="myLabel" @disabled={{true}} data-test-form-element />`);
-    assert.dom('[data-test-form-element]').hasClass('disabled', 'component has disabled class');
   });
 
   test('if invisibleLabel is true visually hidden class is added to label', async function (assert) {
@@ -677,7 +679,9 @@ module('Integration | Component | bs-form/element', function (hooks) {
     this.set('model', EmberObject.create({ name: null }));
     this.set('error', 'some error');
     await render(hbs`
-        <BsForm::Element @property="name" @hasValidator={{true}} @customError={{this.error}} @model={{this.model}} data-test-form-element />
+        <BsForm @model={{this.model}} as |form|>
+          <form.element @property="name" @customError={{this.error}} data-test-form-element />
+        </BsForm>
     `);
     assert.dom(formFeedbackElement()).hasClass(validationErrorClass(), 'custom error is shown immediately');
     assert.dom(`[data-test-form-element] .${formFeedbackClass()}`).hasText('some error');
@@ -693,7 +697,9 @@ module('Integration | Component | bs-form/element', function (hooks) {
     this.set('model', EmberObject.create({ name: null }));
     this.set('warning', 'some warning');
     await render(hbs`
-        <BsForm::Element @property="name" @hasValidator={{true}} @customWarning={{this.warning}} @model={{this.model}} data-test-form-element />
+        <BsForm @model={{this.model}} as |form|>
+          <form.element @property="name" @customWarning={{this.warning}} data-test-form-element />
+        </BsForm>
     `);
     assert.dom(formFeedbackElement()).hasClass(validationWarningClass(), 'custom warning is shown immediately');
     assert.dom(`[data-test-form-element] .${formFeedbackClass()}`).hasText('some warning');

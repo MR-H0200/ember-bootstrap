@@ -12,7 +12,6 @@ import {
 import { assertPositioning, setupForPositioning } from '../../helpers/contextual-help';
 import setupStylesheetSupport from '../../helpers/setup-stylesheet-support';
 import setupNoDeprecations from '../../helpers/setup-no-deprecations';
-import { gte } from 'ember-compatibility-helpers';
 import a11yAudit from 'ember-a11y-testing/test-support/audit';
 import sinon from 'sinon';
 
@@ -24,7 +23,7 @@ module('Integration | Component | bs-popover', function (hooks) {
   test('it has correct markup', async function (assert) {
     // Template block usage:
     await render(hbs`
-      <BsPopover @id="popover-element" @fade={{true}} @title="dummy title" @class="wide" @visible={{true}}>
+      <BsPopover @id="popover-element" @fade={{true}} @title="dummy title" @visible={{true}} class="wide">
         template block text
       </BsPopover>
     `);
@@ -75,14 +74,15 @@ module('Integration | Component | bs-popover', function (hooks) {
     setupForPositioning();
 
     await click('#target');
-    assertPositioning(assert, '.popover', versionDependent(0, 8));
+
+    assertPositioning(assert, '.popover', 8);
   });
 
   test('should adjust popover arrow', async function (assert) {
     this.insertCSSRule('#wrapper p { margin-top: 200px }');
     this.insertCSSRule('#target { width: 100px; padding: 0; border: none; }');
 
-    let expectedArrowPosition = versionDependent(213, 217);
+    let expectedArrowPosition = 217;
 
     await render(hbs`
       <div id="ember-bootstrap-wormhole"></div>
@@ -97,7 +97,12 @@ module('Integration | Component | bs-popover', function (hooks) {
     setupForPositioning('right');
 
     await click('#target');
-    let arrowPosition = parseInt(this.element.querySelector(`.${popoverArrowClass()}`).style.left, 10);
+    let arrowPosition = parseInt(
+      this.element
+        .querySelector(`.${popoverArrowClass()}`)
+        .style.transform.match(/translate(?:3d)?\(([0-9]+)px.*\)/)[1],
+      10
+    );
     assert.ok(
       Math.abs(arrowPosition - expectedArrowPosition) <= 2,
       `Expected position: ${expectedArrowPosition}, actual: ${arrowPosition}`
@@ -106,7 +111,12 @@ module('Integration | Component | bs-popover', function (hooks) {
     // check again to prevent regression of https://github.com/kaliber5/ember-bootstrap/issues/361
     await click('#target');
     await click('#target');
-    arrowPosition = parseInt(this.element.querySelector(`.${popoverArrowClass()}`).style.left, 10);
+    arrowPosition = parseInt(
+      this.element
+        .querySelector(`.${popoverArrowClass()}`)
+        .style.transform.match(/translate(?:3d)?\(([0-9]+)px.*\)/)[1],
+      10
+    );
     assert.ok(
       Math.abs(arrowPosition - expectedArrowPosition) <= 2,
       `Expected position: ${expectedArrowPosition}, actual: ${arrowPosition}`
@@ -201,13 +211,7 @@ module('Integration | Component | bs-popover', function (hooks) {
     assert.dom('.popover').exists('popover visible again');
   });
 
-  test('it passes along class attribute', async function (assert) {
-    await render(hbs`<div id="target"><BsPopover @title="Dummy" @class="wide">test</BsPopover></div>`);
-    await click('#target');
-    assert.dom('.popover').hasClass('wide');
-  });
-
-  (gte('3.4.0') ? test : skip)('it passes all HTML attribute', async function (assert) {
+  test('it passes all HTML attribute', async function (assert) {
     await render(
       hbs`<div id="target"><BsPopover @title="Dummy" class="wide" data-test role="foo">test</BsPopover></div>`
     );
@@ -247,6 +251,94 @@ module('Integration | Component | bs-popover', function (hooks) {
     await settled();
 
     assert.dom('#wrapper .popover').exists({ count: 1 }, 'Popover exists in place.');
+  });
+
+  test('it calls onShow/onShown actions when showing popover by event [fade=false]', async function (assert) {
+    let showAction = sinon.spy();
+    this.set('show', showAction);
+    let shownAction = sinon.spy();
+    this.set('shown', shownAction);
+    await render(
+      hbs`<div id="target"><BsPopover @title="Dummy" @fade={{false}} @onShow={{this.show}} @onShown={{this.shown}} /></div>`
+    );
+    await click('#target');
+    assert.ok(showAction.calledOnce, 'show action has been called');
+    assert.ok(shownAction.calledOnce, 'shown action has been called');
+  });
+
+  test('it calls onShow/onShown actions when showing popover programmatically [fade=false]', async function (assert) {
+    let showAction = sinon.spy();
+    this.set('show', showAction);
+    let shownAction = sinon.spy();
+    this.set('shown', shownAction);
+    this.set('visible', false);
+    await render(
+      hbs`<div id="target"><BsPopover @title="Dummy" @visible={{this.visible}} @fade={{false}} @onShow={{this.show}} @onShown={{this.shown}} /></div>`
+    );
+    this.set('visible', true);
+    await settled();
+    assert.ok(showAction.calledOnce, 'show action has been called');
+    assert.ok(shownAction.calledOnce, 'shown action has been called');
+  });
+
+  test('it aborts showing if onShow action returns false', async function (assert) {
+    let showAction = sinon.stub();
+    showAction.returns(false);
+    this.set('show', showAction);
+    let shownAction = sinon.spy();
+    this.set('shown', shownAction);
+    await render(
+      hbs`<div id="target"><BsPopover @title="Dummy" @fade={{false}} @onShow={{this.show}} @onShown={{this.shown}} /></div>`
+    );
+    await click('#target');
+    assert.ok(showAction.calledOnce, 'show action has been called');
+    assert.ok(shownAction.notCalled, 'show action has not been called');
+    assert.dom('.popover').doesNotExist('popover is not visible');
+  });
+
+  test('it calls onHide/onHidden actions when hiding popover by event [fade=false]', async function (assert) {
+    let hideAction = sinon.spy();
+    this.set('hide', hideAction);
+    let hiddenAction = sinon.spy();
+    this.set('hidden', hiddenAction);
+    await render(
+      hbs`<div id="target"><BsPopover @title="Dummy" @fade={{false}} @onHide={{this.hide}} @onHidden={{this.hidden}} /></div>`
+    );
+    await click('#target');
+    await click('#target');
+    assert.ok(hideAction.calledOnce, 'hide action has been called');
+    assert.ok(hiddenAction.calledOnce, 'hidden action was called');
+  });
+
+  test('it calls onHide/onHidden actions when hiding popover programmatically [fade=false]', async function (assert) {
+    let hideAction = sinon.spy();
+    this.set('hide', hideAction);
+    let hiddenAction = sinon.spy();
+    this.set('hidden', hiddenAction);
+    this.set('visible', true);
+    await render(
+      hbs`<div id="target"><BsPopover @visible={{this.visible}} @title="Dummy" @fade={{false}} @onHide={{this.hide}} @onHidden={{this.hidden}} /></div>`
+    );
+    this.set('visible', false);
+    await settled();
+    assert.ok(hideAction.calledOnce, 'hide action has been called');
+    assert.ok(hiddenAction.calledOnce, 'hidden action was called');
+  });
+
+  test('it aborts hiding if onHide action returns false', async function (assert) {
+    let hideAction = sinon.stub();
+    hideAction.returns(false);
+    this.set('hide', hideAction);
+    let hiddenAction = sinon.spy();
+    this.set('hidden', hiddenAction);
+    await render(
+      hbs`<div id="target"><BsPopover @title="Dummy" @fade={{false}} @onHide={{this.hide}} @onHidden={{this.hidden}} /></div>`
+    );
+    await click('#target');
+    await click('#target');
+    assert.ok(hideAction.calledOnce, 'hide action has been called');
+    assert.ok(hiddenAction.notCalled, 'hidden action has not been called');
+    assert.dom('.popover').exists({ count: 1 }, 'popover is visible');
   });
 
   test('it passes accessibility checks', async function (assert) {

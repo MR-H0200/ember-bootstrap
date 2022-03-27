@@ -2,30 +2,19 @@ import { tagName } from '@ember-decorators/component';
 import { gt } from '@ember/object/computed';
 import Component from '@ember/component';
 import { action, computed, set } from '@ember/object';
-import { assert, warn } from '@ember/debug';
+import { assert } from '@ember/debug';
 import { isPresent } from '@ember/utils';
 import { schedule } from '@ember/runloop';
 import RSVP from 'rsvp';
 import defaultValue from 'ember-bootstrap/utils/default-decorator';
 import { getOwnConfig, macroCondition } from '@embroider/macros';
-import { DEBUG } from '@glimmer/env';
 import deprecateSubclassing from 'ember-bootstrap/utils/deprecate-subclassing';
 
 /**
   Render a form with the appropriate Bootstrap layout class (see `formLayout`).
   Allows setting a `model` that nested `Components.FormElement`s can access, and that can provide form validation (see below)
 
-  You can use whatever markup you like within the form. The following shows Bootstrap 3 usage for the internal markup.
-
-  ```handlebars
-  <BsForm @onSubmit={{action "submit"}} as |form|>
-    <form.group>
-      <label class="control-label">First name</label>
-      <input value={{this.firstname}} class="form-control" oninput={{action (mut this.firstname) value="target.value"}} type="text">
-    </form.group>
-  </BsForm>
-  ```
-
+  You can use whatever markup you like within the form.
   However to benefit from features such as automatic form markup, validations and validation markup, use `Components.FormElement`
   as nested components. See below for an example.
 
@@ -197,12 +186,6 @@ export default class Form extends Component {
 
   /**
    * @property elementComponent
-   * @type {String}
-   * @private
-   */
-
-  /**
-   * @property groupComponent
    * @type {String}
    * @private
    */
@@ -518,25 +501,6 @@ export default class Form extends Component {
       `Invalid formLayout property given: ${formLayout}`,
       ['vertical', 'horizontal', 'inline'].indexOf(formLayout) >= 0
     );
-
-    if (DEBUG) {
-      warn(
-        `Argument novalidate of <BsForm> component has been removed. ` +
-          `Its only purpose was setting the HTML attribute novalidate of the <form> element. ` +
-          `You should use angle bracket component invocation syntax instead:\n` +
-          `Before:n` +
-          `  {{bs-form novalidate=true}}\n` +
-          `  <BsForm @novalidate={{true}} />\n` +
-          `After:\n` +
-          `  <BsForm novalidate>\n` +
-          `A codemod is available to help with the required migration. See https://github.com/kaliber5/ember-bootstrap-codemods/blob/master/transforms/deprecated-attribute-arguments/README.md`,
-        // eslint-disable-next-line ember/no-attrs-in-components
-        !Object.keys(this.attrs).includes('novalidate'),
-        {
-          id: `ember-bootstrap.removed-argument.form#novalidate`,
-        }
-      );
-    }
   }
 
   @action

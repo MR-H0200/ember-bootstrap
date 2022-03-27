@@ -5,7 +5,7 @@ module.exports = function (environment) {
     modulePrefix: 'dummy',
     environment,
     rootURL: '/',
-    locationType: 'auto',
+    locationType: 'history',
     EmberENV: {
       FEATURES: {
         // Here you can enable experimental features on an ember canary build
@@ -22,7 +22,7 @@ module.exports = function (environment) {
       // when it is created
     },
 
-    bootstrapVersion: process.env.BOOTSTRAPVERSION || 4,
+    bootstrapVersion: process.env.BOOTSTRAPVERSION || 5,
     fastboot: {
       hostWhitelist: [/^localhost:\d+$/],
     },
